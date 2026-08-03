@@ -1,0 +1,2 @@
+stage 1:
+new app EDA - some simple bus, simple events to tests and check
