@@ -1,5 +1,7 @@
-from dataclasses import dataclass
-import time
+from dataclasses import dataclass,asdict
+import time,json
+from misc.logger_details import logger_events,logger_data
+import datetime as dt
 
 @dataclass
 class WaterLevel:
@@ -80,6 +82,11 @@ class EventBus:
         self._handler = {}
 
     def add_subscribtion_event(self,event_type,handler):
+        try:
+            function_name=str(handler).split(" ")[2]
+        except:
+            function_name=str(handler)
+        logger_events.info("Bus:Subscribtion event added: for type %s  function: %s", event_type.__name__,function_name)
         if event_type not in self._handler:
             self._handler[event_type]=[]
 
@@ -93,22 +100,42 @@ class EventBus:
         if one_type_handler is None:return
 
         for h in one_type_handler:
+            #log 
+            evt_name = event_type.__name__
+            try:
+                function_name=str(h).split(" ")[2]
+            except:
+                function_name=str(h)
+            logger_events.info("Bus:publish: for data  %s  handler: %s",evt_name,function_name)
+            log_data ={"timestamp": dt.datetime.now().isoformat(),
+                       "logger": "bus_data_dump",
+                       "event_type": evt_name,
+                        "handler": function_name,
+                       'data':asdict(event)}
+            logger_data.info(json.dumps(log_data, ensure_ascii=False))
+            
             h(event)    #h -pointer to funciton, event -param for that funciton
 
+#__init__ 
 tank = WaterLevelCheck("T12")
 bus = EventBus()
 sms = SmsService()
 pump = PumpController(bus,tank)
+
+#add to subscribtion data, and event what they should trigger
 bus.add_subscribtion_event(WaterLevel,sms.send_sms)
 bus.add_subscribtion_event(WaterLevel,pump.start_puump)
 bus.add_subscribtion_event(WaterRefillingProgres,pump.water_level_info)
 bus.add_subscribtion_event(WaterDroppingProgres,pump.water_level_info)
 
-
+#event source
 e = tank.update_water_level(10)
 
+#we send that event into bus to propagate it
 bus.publish(e)
 
 e=tank.remove_water(10)
 
 bus.publish(e)
+
+print(f"Tank water level:{tank.get_water_info().water_level_precentage}")
