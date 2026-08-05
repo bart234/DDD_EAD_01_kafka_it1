@@ -1,3 +1,8 @@
+stage 3:
+logger_decorator done
+additional setting added to decorator
+decorator is custom to function
+
 stage 2:
 additional events added, 
 add logging , custom loggerFormat to save 

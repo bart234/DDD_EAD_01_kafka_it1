@@ -1,12 +1,13 @@
 from dataclasses import dataclass,asdict
-import time,json
-from misc.logger_details import logger_events,logger_data
-import datetime as dt
+import time
+from misc.logger_decorator import *
+
 
 @dataclass
 class WaterLevel:
     tank_id: str
     water_level_precentage: int
+    
 
 @dataclass
 class WaterRefillingProgres:
@@ -56,6 +57,7 @@ class PumpController:
         self.bus=bus
         self.tank=tank
 
+    
     def start_puump(self,event):
         print(f"Water level for {event.tank_id} is  {event.water_level_precentage} < 15%. Pump controll on.")
         for i in range(1,5):
@@ -81,18 +83,13 @@ class EventBus:
     def __init__(self):
         self._handler = {}
 
+    @bus_logger(log_type="event")
     def add_subscribtion_event(self,event_type,handler):
-        try:
-            function_name=str(handler).split(" ")[2]
-        except:
-            function_name=str(handler)
-        logger_events.info("Bus:Subscribtion event added: for type %s  function: %s", event_type.__name__,function_name)
         if event_type not in self._handler:
             self._handler[event_type]=[]
-
         self._handler[event_type].append(handler)
-        print(2)
 
+    @bus_logger(log_type="data")
     def publish(self,event):
         event_type = type(event)
         one_type_handler = self._handler.get(event_type)    #it takes all expected subscribers (added before) -mosty their metod to run
@@ -101,19 +98,6 @@ class EventBus:
 
         for h in one_type_handler:
             #log 
-            evt_name = event_type.__name__
-            try:
-                function_name=str(h).split(" ")[2]
-            except:
-                function_name=str(h)
-            logger_events.info("Bus:publish: for data  %s  handler: %s",evt_name,function_name)
-            log_data ={"timestamp": dt.datetime.now().isoformat(),
-                       "logger": "bus_data_dump",
-                       "event_type": evt_name,
-                        "handler": function_name,
-                       'data':asdict(event)}
-            logger_data.info(json.dumps(log_data, ensure_ascii=False))
-            
             h(event)    #h -pointer to funciton, event -param for that funciton
 
 #__init__ 
