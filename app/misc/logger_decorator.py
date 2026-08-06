@@ -58,26 +58,26 @@ def bus_logger(log_type="default"):
 #         return stg_to_return
 #     return fn
 
-def bus_data_logger_decorator(func):
-    @wraps(func)            
-    def wrapper(self, event, *args, **kwargs):
-        #self - is a parent class object
-        #action before
-        event_type = type(event)                        
-        evt_name = event_type.__name__                      
-        one_type_handler = self._handler.get(event_type)
+# def bus_data_logger_decorator(func):
+#     @wraps(func)            
+#     def wrapper(self, event, *args, **kwargs):
+#         #self - is a parent class object
+#         #action before
+#         event_type = type(event)                        
+#         evt_name = event_type.__name__                      
+#         one_type_handler = self._handler.get(event_type)
 
-        if one_type_handler:
-            for h in one_type_handler:                
-                log_data = {
-                    "timestamp": dt.datetime.now().isoformat(),
-                    "logger": "bus_data_dump",
-                    "event_type": evt_name,                     #"WaterRefillingProgres"
-                    "handler": _extract_function_name(h),       #"PumpController.water_level_info"
-                    "data": asdict(event)                       #{"tank_id": "T12", "wat..
-                }
-                logger_data.info(json.dumps(log_data, ensure_ascii=False))
+#         if one_type_handler:
+#             for h in one_type_handler:                
+#                 log_data = {
+#                     "timestamp": dt.datetime.now().isoformat(),
+#                     "logger": "bus_data_dump",
+#                     "event_type": evt_name,                     #"WaterRefillingProgres"
+#                     "handler": _extract_function_name(h),       #"PumpController.water_level_info"
+#                     "data": asdict(event)                       #{"tank_id": "T12", "wat..
+#                 }
+#                 logger_data.info(json.dumps(log_data, ensure_ascii=False))
 
-        return func(self, event, *args, **kwargs)
-    return wrapper
+#         return func(self, event, *args, **kwargs)
+#     return wrapper
 

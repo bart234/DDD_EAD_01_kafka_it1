@@ -1,3 +1,16 @@
+TODO: stage 5
+move all to containers, configure it and mak it wokr together
+add kafka betweeen as a broker
+
+
+TODO:stage 4:
+refactor it , add some tests
+add listening server which will display all logs
+add api: where will be some controll
+add simple front to have  visual controll - with current status of water level
+add db: to save tank water level
+add more tanks
+
 stage 3:
 logger_decorator done
 additional setting added to decorator
@@ -10,3 +23,67 @@ add logging , custom loggerFormat to save
 stage 1:
 new app EDA - some simple bus, simple events to tests and check
 
+
+LISTENENIG SERVER
+Oto gotowe, minimalistyczne rozwiązanie oparte na Dockerze i języku Python. Pozwala ono przechwytywać ruch sieciowy wysyłany z jednego kontenera i natychmiast wyświetlać go na ekranie (w konsoli) drugiego kontenera.Najprostszą i najbardziej niezawodną metodą jest uruchomienie prostego serwera HTTP (np. na porcie 5000), na który drugi kontener będzie kierował swoje zapytania.1. Kod serwera nasłuchującego (server.py)Utwórz plik o nazwie server.py. Ten skrypt uruchomi serwer, który odbierze każde zapytanie POST i wypisze jego zawartość w konsoli.pythonfrom http.server import BaseHTTPRequestHandler, HTTPServer
+
+class LogRequestHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        # Odczytanie długości danych
+        content_length = int(self.headers['Content-Length'])
+        # Pobranie zawartość body zapytania
+        post_data = self.rfile.read(content_length).decode('utf-8')
+        
+        # Nagłówek w konsoli serwera
+        print(f"\n--- ODEBRANO RUCH Z: {self.client_address[0]} ---")
+        print(f"Ścieżka: {self.path}")
+        print(f"Dane: {post_data}")
+        print("-" * 40)
+        
+        # Odpowiedź do kontenera wysyłającego
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def run():
+    server_address = ('0.0.0.0', 5000)
+    httpd = HTTPServer(server_address, LogRequestHandler)
+    print("Serwer uruchomiony. Nasłuchiwanie na porcie 5000...")
+    httpd.serve_forever()
+
+if __name__ == '__main__':
+    run()
+Używaj kodu z rozwagą.2. Konfiguracja Docker Compose (docker-compose.yml)Najłatwiej połączyć kontenery za pomocą Docker Compose. Tworzy on wspólną sieć, dzięki czemu kontenery widzą się nawzajem po nazwach usług.Utwórz plik docker-compose.yml w tym samym katalogu:yamlversion: '3.8'
+
+services:
+  # Kontener odbiorcy (nasz serwer)
+  odbiorca:
+    image: python:3.10-slim
+    volumes:
+      - ./server.py:/server.py
+    command: python -u /server.py
+    # Opcja '-u' wymusza natychmiastowe wypisywanie logów na ekran bez buforowania
+    ports:
+      - "5000:5000"
+
+  # Kontener nadawcy (symuluje ruch z innego kontenera)
+  nadawca:
+    image: alpine
+    depends_on:
+      - odbiorca
+    # Wysyła testowy pakiet co 5 sekund do kontenera "odbiorca"
+    command: >
+      sh -c "apk add --no-cache curl &&
+             while true; do
+               curl -X POST -d '{\"status\": \"dziala\", \"wiadomosc\": \"Czesc z drugiego kontenera!\"}' http://odbiorca:5000/test-endpoint;
+               sleep 5;
+             done"
+Używaj kodu z rozwagą.3. Jak to uruchomić i testować?Umieść pliki server.py oraz docker-compose.yml w jednym folderze.Uruchom środowisko poleceniem:bashdocker-compose up
+Używaj kodu z rozwagą.W konsoli natychmiast zobaczysz logi. Serwer przechwyci ruch z kontenera nadawca i wyświetli go w czytelny sposób:textodbiorca_1  | Serwer uruchomiony. Nasłuchiwanie na porcie 5000...
+odbiorca_1  | 
+odbiorca_1  | --- ODEBRANO RUCH Z: 172.18.0.3 ---
+odbiorca_1  | Ścieżka: /test-endpoint
+odbiorca_1  | Dane: {"status": "dziala", "wiadomosc": "Czesc z drugiego kontenera!"}
+odbiorca_1  | ----------------------------------------
+Używaj kodu z rozwagą.Alternatywa (gdy nie możesz modyfikować kodu nadawcy)Jeśli kontener nadawcy wysyła ruch w świat, a Ty chcesz go podglądać po cichu (sniffer pakietów), powyższy serwer HTTP nie wystarczy. W takim wypadku najlepiej uruchomić kontener z narzędziem tcpdump podpiętym pod sieć drugiego kontenera:bashdocker run --rm -it --net=container:<NAZWA_KONTENERA_NADAWCY> nicolaka/netshoot tcpdump -A -vv port 80
+Używaj kodu z rozwagą.Ta komenda wyświetli na ekranie każdy pakiet tekstowy przechodzący przez wskazany kontener na porcie 80.Jeżeli chcesz dostosować to rozwiązanie do swojego projektu, daj mi znać:W jakim języku/technologii działa Twój istniejący kontener?Czy kontener-nadawca wysyła ruch HTTP, czy jest to inny protokół (np. gRPC, WebSockets, surowe pakiety TCP/UDP)?

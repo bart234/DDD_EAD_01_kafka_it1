@@ -1,23 +1,6 @@
-from dataclasses import dataclass,asdict
 import time
 from misc.logger_decorator import *
-
-
-@dataclass
-class WaterLevel:
-    tank_id: str
-    water_level_precentage: int
-    
-
-@dataclass
-class WaterRefillingProgres:
-    tank_id: str
-    water_level_precentage: int
-
-@dataclass
-class WaterDroppingProgres:
-    tank_id: str
-    water_level_precentage: int
+from models_data_structures.Water_structure import *
 
 
 class WaterLevelCheck:
@@ -56,7 +39,6 @@ class PumpController:
     def __init__(self,bus,tank):
         self.bus=bus
         self.tank=tank
-
     
     def start_puump(self,event):
         print(f"Water level for {event.tank_id} is  {event.water_level_precentage} < 15%. Pump controll on.")
@@ -75,9 +57,6 @@ class PumpController:
         time.sleep(1)
         drop_event = self.tank.remove_water(5)
         self.bus.publish(drop_event)
-
-
-
 
 class EventBus:
     def __init__(self):
